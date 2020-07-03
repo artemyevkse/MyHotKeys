@@ -13,13 +13,38 @@ using System.Runtime.InteropServices;
 using System.Management.Automation;
 using System.IO;
 
+using VirtualDesktop;
+
 namespace MyHotKeys
 {
     public partial class Form1 : Form
     {
         const string PATH_PS = "C:\\ps\\";
 
-        protected string pathWallpapers = "C:\\Users\\Константин\\wallpapers\\";
+        protected static string userDir = Environment.GetEnvironmentVariable("USERPROFILE");
+
+        protected string pathWallpapers = userDir + @"\wallpapers\";
+        protected string psxExe = userDir + @"\programs\epsxe202-1\epsxe.exe";
+        protected static string pathPsxIsos = userDir + @"\Downloads\psx\";
+        protected string pcsx2Exe = userDir + @"\programs\PCSX2 1.6.0\pcsx2.exe";
+        protected string pathPcsx2Isos = pathPsxIsos + @"psx2\";
+
+        protected List<string> psxIsos = new List<string>() {
+            "FIFA Soccer 2005",
+            "Crash Bandicoot",
+            "CTR - Crash Team Racing",
+            "Need for Speed III - Hot Pursuit",
+            "Hogs of War",
+            "Grand Theft Auto - Liberty City Stories"
+        };
+
+        protected Dictionary<string, string> multiPsxIsos = new Dictionary<string, string> {
+            ["Hogs of War"] = "Hogs of War (Track 1)"
+        };
+
+        protected Dictionary<string, int> psVersion = new Dictionary<string, int> {
+            ["Grand Theft Auto - Liberty City Stories"] = 2
+        };
 
         int[] acceptWorkspace = {0, 1, 2, 3};
 
@@ -67,28 +92,64 @@ namespace MyHotKeys
         {
             if (kh.WinHeld && kh.CtrlHeld)
             {
-                if (lParam.vkCode > 48 && lParam.vkCode <= 52
-                    && this.acceptWorkspace.Contains(lParam.vkCode - 49))
-                {
+                if (lParam.vkCode > 48 && lParam.vkCode <= 52 && this.acceptWorkspace.Contains(lParam.vkCode - 49))
+                { // 1-4
                     MoveToWorkspace(lParam.vkCode - 49);
                 }
-                else if (lParam.vkCode >= 112 && lParam.vkCode <= 123)
+                else if (lParam.vkCode == 48) // 0
+                {
+                    RunPsx(-2);
+                }
+                else if (lParam.vkCode == 56) // 8
+                {
+                    RunPsx(0);
+                }
+                else if (lParam.vkCode > 53 && lParam.vkCode < 58) // 6-9
+                {
+                    RunPsx(lParam.vkCode - 60);
+                }
+                else if (lParam.vkCode >= 122 && lParam.vkCode <= 123) // F11-F12
+                {
+                    RunPsx(lParam.vkCode - 123);
+                }
+                else if (lParam.vkCode >= 112 && lParam.vkCode <= 123) // F1-F12
                 {
                     ChangeBackground(lParam.vkCode - 111);
                 }
-                else if (lParam.vkCode == 37
-                    && this.acceptWorkspace.Contains(this.idCurrentWorkspace - 1))
-                {
+                else if (lParam.vkCode == 37 && this.acceptWorkspace.Contains(this.idCurrentWorkspace - 1))
+                { // Left
                      this.idCurrentWorkspace--;
                      SetTrayIconN(this.idCurrentWorkspace);
                 }
-                else if (lParam.vkCode == 39
-                    && this.acceptWorkspace.Contains(this.idCurrentWorkspace + 1))
-                {
+                else if (lParam.vkCode == 39 && this.acceptWorkspace.Contains(this.idCurrentWorkspace + 1))
+                { // Right
                      this.idCurrentWorkspace++;
                      SetTrayIconN(this.idCurrentWorkspace);
                 }
             }
+        }
+
+        [DllImport("kernel32.dll")]
+        static extern uint WinExec(string lpCmdLine, uint uCmdShow);
+        protected void RunPsx(int revertIdPsxIso)
+        {
+            string isoName = psxIsos[-revertIdPsxIso];
+            string multiIsoName = multiPsxIsos.ContainsKey(isoName) ? multiPsxIsos[isoName] : isoName;
+
+            if (psVersion.ContainsKey(isoName) && psVersion[isoName] == 2) {
+                RunPcsx2(isoName, multiIsoName);
+                return;
+            }
+
+            WinExec(psxExe + $@" -nogui -loadbin ""{pathPsxIsos}/{isoName}/{multiIsoName}.bin""", 1);
+        }
+
+        protected void RunPcsx2(string isoName, string multiIsoName = null)
+        {
+            if (multiIsoName == null)
+                multiIsoName = isoName;
+
+            WinExec(pcsx2Exe + $@" --nogui --fullscreen ""{pathPcsx2Isos}/{isoName}/{multiIsoName}.iso""", 1);
         }
 
         protected void MoveToWorkspace(int idWorkspace)
@@ -97,6 +158,8 @@ namespace MyHotKeys
 
             ps.AddScript(PATH_PS + "vd" + (idWorkspace + 1).ToString() + ".ps1");
             ps.Invoke();
+
+            //Desktop.FromIndex(idWorkspace).MakeVisible();
 
             this.idCurrentWorkspace = idWorkspace;
             SetTrayIconN(idWorkspace);
@@ -135,26 +198,8 @@ namespace MyHotKeys
 
         private void CheckWorkspace()
         {
-            PowerShell ps = PowerShell.Create();
-
-            ps.AddScript(PATH_PS + "vd_check.ps1");
-            var results = ps.Invoke();
-
-            foreach (var psObject in results)
-            {
-                string buf = psObject.ToString();
-
-                if (buf.All(char.IsDigit))
-                {
-                    int nBuf = Int16.Parse(buf);
-
-                    if (this.acceptWorkspace.Contains(nBuf))
-                    {
-                        this.idCurrentWorkspace = nBuf;
-                        SetTrayIconN(nBuf);
-                    }
-                }
-            }
+            this.idCurrentWorkspace = Desktop.FromDesktop(Desktop.Current);
+            SetTrayIconN(this.idCurrentWorkspace);
         }
 
         private void SetTrayIconN(int num)

@@ -8,11 +8,6 @@ namespace MyHotKeys
 {
     class Program
     {
-        /*private System.Windows.Forms.NotifyIcon notifyIcon1;
-        private System.Windows.Forms.ContextMenu contextMenu1;
-        private System.Windows.Forms.MenuItem menuItem1;
-        private System.ComponentModel.IContainer components;*/
-
         /// <summary>
         /// Главная точка входа для приложения.
         /// </summary>
