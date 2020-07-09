@@ -24,10 +24,12 @@ namespace MyHotKeys
         protected static string userDir = Environment.GetEnvironmentVariable("USERPROFILE");
 
         protected string pathWallpapers = userDir + @"\wallpapers\";
-        protected string psxExe = userDir + @"\programs\epsxe202-1\epsxe.exe";
         protected static string pathPsxIsos = userDir + @"\Downloads\psx\";
-        protected string pcsx2Exe = userDir + @"\programs\PCSX2 1.6.0\pcsx2.exe";
         protected string pathPcsx2Isos = pathPsxIsos + @"psx2\";
+
+        protected string pathExePsx = userDir + @"\programs\epsxe202-1\epsxe.exe";        
+        protected string pathExePcsx2 = userDir + @"\programs\PCSX2 1.6.0\pcsx2.exe";
+        protected string pathExeOpera = userDir + @"\AppData\Local\Programs\Opera developer\launcher.exe";
 
         protected List<string> psxIsos = new List<string>() {
             "FIFA Soccer 2005",
@@ -35,11 +37,13 @@ namespace MyHotKeys
             "CTR - Crash Team Racing",
             "Need for Speed III - Hot Pursuit",
             "Hogs of War",
-            "Grand Theft Auto - Liberty City Stories"
+            "Grand Theft Auto - Liberty City Stories",
+            "Sled Storm"
         };
 
         protected Dictionary<string, string> multiPsxIsos = new Dictionary<string, string> {
-            ["Hogs of War"] = "Hogs of War (Track 1)"
+            ["Hogs of War"] = "Hogs of War (Track 1)",
+            ["Sled Storm"] = "Sled Storm (Track 01)"
         };
 
         protected Dictionary<string, int> psVersion = new Dictionary<string, int> {
@@ -92,7 +96,21 @@ namespace MyHotKeys
         {
             if (kh.WinHeld && kh.CtrlHeld)
             {
-                if (lParam.vkCode > 48 && lParam.vkCode <= 52 && this.acceptWorkspace.Contains(lParam.vkCode - 49))
+                if (kh.AltHeld && lParam.vkCode != 115) { // Alt, but not F4
+                    if (lParam.vkCode == 121) // F10
+                    {
+                        RunPsx();
+                    }
+                    else if (lParam.vkCode == 120) // F9
+                    {
+                        WinRun();
+                    }
+                    else if (lParam.vkCode == 119) // F8
+                    {
+                        OperaPrivate();
+                    }
+                }
+                else if (lParam.vkCode > 48 && lParam.vkCode <= 52 && this.acceptWorkspace.Contains(lParam.vkCode - 49))
                 { // 1-4
                     MoveToWorkspace(lParam.vkCode - 49);
                 }
@@ -131,6 +149,15 @@ namespace MyHotKeys
 
         [DllImport("kernel32.dll")]
         static extern uint WinExec(string lpCmdLine, uint uCmdShow);
+        protected void OperaPrivate()
+        {
+            WinExec(pathExeOpera + " --private", 0);
+        }
+
+        protected void RunPsx()
+        {
+            WinExec(pathExePsx, 1);
+        }
         protected void RunPsx(int revertIdPsxIso)
         {
             string isoName = psxIsos[-revertIdPsxIso];
@@ -141,7 +168,7 @@ namespace MyHotKeys
                 return;
             }
 
-            WinExec(psxExe + $@" -nogui -loadbin ""{pathPsxIsos}/{isoName}/{multiIsoName}.bin""", 1);
+            WinExec(pathExePsx + $@" -nogui -loadbin ""{pathPsxIsos}/{isoName}/{multiIsoName}.bin""", 1);
         }
 
         protected void RunPcsx2(string isoName, string multiIsoName = null)
@@ -149,7 +176,7 @@ namespace MyHotKeys
             if (multiIsoName == null)
                 multiIsoName = isoName;
 
-            WinExec(pcsx2Exe + $@" --nogui --fullscreen ""{pathPcsx2Isos}/{isoName}/{multiIsoName}.iso""", 1);
+            WinExec(pathExePcsx2 + $@" --nogui --fullscreen ""{pathPcsx2Isos}/{isoName}/{multiIsoName}.iso""", 1);
         }
 
         protected void MoveToWorkspace(int idWorkspace)
@@ -170,6 +197,43 @@ namespace MyHotKeys
         protected void ChangeBackground(int idWallpaper)
         {
             SystemParametersInfo(0x0014, 0, this.pathWallpapers + "bg" + idWallpaper.ToString() + ".png", 0x0001);
+        }
+
+        protected void WinRun()
+        {
+            var dialogBox = new Form();
+            var textBox = new TextBox();
+            var buttonOk = new Button();
+            var buttonCancel = new Button();
+
+            dialogBox.Size = new System.Drawing.Size(400, 100);
+            dialogBox.FormBorderStyle = FormBorderStyle.FixedDialog;
+            dialogBox.StartPosition = FormStartPosition.CenterScreen;
+            dialogBox.Text = "Run...";            
+
+            textBox.Width = 365;
+            textBox.Location = new Point(10, 10);
+
+            buttonOk.Text = "Run";
+            buttonOk.Location = new Point(220, 35);
+            buttonOk.DialogResult = DialogResult.OK;
+            buttonCancel.Text = "Cancel";
+            buttonCancel.Location = new Point(300, 35);
+            buttonCancel.DialogResult = DialogResult.Cancel;
+
+            dialogBox.AcceptButton = buttonOk;
+            dialogBox.CancelButton = buttonCancel;
+            dialogBox.Controls.Add(textBox);
+            dialogBox.Controls.Add(buttonOk);
+            dialogBox.Controls.Add(buttonCancel);
+            dialogBox.ShowDialog();            
+
+            if (dialogBox.DialogResult == DialogResult.OK)
+            {
+                WinExec(textBox.Text, 1);
+            }
+
+            dialogBox.Dispose();
         }
 
         private void CreateNotifyIcon()
